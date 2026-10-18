@@ -63,6 +63,7 @@ class TestZaiModelCapabilities:
         caps = zai.model_capabilities
         assert caps["glm-5.3"] == {
             "supports_reasoning": True, "supports_vision": False, "model_family": "glm",
+            "context_window": 1_048_576,
         }
         assert caps["glm-5.2[1m]"]["supports_vision"] is False
         assert caps["glm-4.5-flash"]["supports_reasoning"] is True
@@ -102,3 +103,17 @@ class TestZaiModelCapabilities:
         assert zai.default_reasoning_config("glm-4.6") == {"enabled": True}
         assert zai.default_reasoning_config("glm-4-9b") is None
         assert zai.default_reasoning_config(None) is None
+
+    def test_native_context_window_is_1m(self) -> None:
+        """GLM-5.2/5.3 on the native Z.AI route serve 1M (docs), NOT the OpenRouter-sourced
+        1.31M in the static table — the profile hook wins over the static defaults."""
+        from providers import get_provider_profile
+
+        zai = get_provider_profile("zai")
+        assert zai is not None
+        assert zai.get_model_context_length("glm-5.3") == 1_048_576
+        assert zai.get_model_context_length("glm-5.3-flash") == 1_048_576
+        assert zai.get_model_context_length("glm-5.2") == 1_048_576
+        assert zai.get_model_context_length("glm-4.7") is None  # generic ladder owns it
+        # The declaration also feeds the picker/catalog path.
+        assert zai.model_capabilities["glm-5.3"]["context_window"] == 1_048_576

@@ -53,8 +53,10 @@ _TEXT_ONLY = {"supports_reasoning": True, "supports_vision": False, "model_famil
 _VISION = {"supports_vision": True, "model_family": "glm"}
 
 GLM_CAPABILITIES: dict[str, dict[str, Any]] = {
-    "glm-5.3": dict(_TEXT_ONLY), "glm-5.3-flash": dict(_TEXT_ONLY),
-    "glm-5.2": dict(_TEXT_ONLY), "glm-5.2[1m]": dict(_TEXT_ONLY),
+    "glm-5.3": dict(_TEXT_ONLY, context_window=1_048_576),
+    "glm-5.3-flash": dict(_TEXT_ONLY, context_window=1_048_576),
+    "glm-5.2": dict(_TEXT_ONLY, context_window=1_048_576),
+    "glm-5.2[1m]": dict(_TEXT_ONLY, context_window=1_048_576),
     "glm-5.1": dict(_TEXT_ONLY), "glm-5.1-highspeed": dict(_TEXT_ONLY),
     "glm-5": dict(_TEXT_ONLY), "glm-5-turbo": dict(_TEXT_ONLY),
     "glm-4.7": dict(_TEXT_ONLY), "glm-4.7-flash": dict(_TEXT_ONLY), "glm-4.7-flashx": dict(_TEXT_ONLY),
@@ -124,6 +126,16 @@ class ZaiProfile(ProviderProfile):
         unset on the wire, leaving the server default (max) in charge."""
         if _model_supports_thinking(model) or _has_token(model, _GLM_5_2_TOKENS):
             return {"enabled": True}
+        return None
+
+    def get_model_context_length(self, model: str) -> int | None:
+        """GLM-5.2/5.3 native Z.AI endpoints serve a 1M-token window (docs.z.ai/guides/llm/glm-5.2,
+        glm-5.3). The provider-agnostic static table carries OpenRouter's serving numbers
+        (5.3 = 1.31M), which over-compress on the native route — this hook is consulted before
+        the static defaults, so the fix is scoped to the zai profiles. Other GLM families fall
+        through to the generic ladder."""
+        if _has_token(model, _GLM_5_3_TOKENS) or _has_token(model, _GLM_5_2_TOKENS):
+            return 1_048_576
         return None
 
 
