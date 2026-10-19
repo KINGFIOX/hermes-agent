@@ -66,6 +66,13 @@ class TestZaiModelCapabilities:
             "context_window": 1_048_576,
         }
         assert caps["glm-5.2[1m]"]["supports_vision"] is False
+        assert caps["glm-5.3[1m]"]["supports_vision"] is False
+        # GLM-5.3-Flash is multimodal (ZCode override rule + docs.z.ai), unlike the 5.3 family.
+        for slug in ("glm-5.3-flash", "glm-5.3-flash[1m]"):
+            assert caps[slug] == {
+                "supports_reasoning": True, "supports_vision": True, "model_family": "glm",
+                "context_window": 1_048_576,
+            }
         assert caps["glm-4.5-flash"]["supports_reasoning"] is True
         assert caps["glm-5v-turbo"]["supports_vision"] is True
         assert caps["glm-4.6v-flashx"]["supports_vision"] is True
@@ -82,6 +89,20 @@ class TestZaiModelCapabilities:
         from agent.models_dev import _entry_supports_vision
 
         assert _entry_supports_vision(patched) is False
+
+    def test_flash_declares_vision_through_overrides(self) -> None:
+        """GLM-5.3-Flash stays image-capable on the provider-aware media path, even when the
+        catalog entry is text-only — the declaration must not fail closed for this model."""
+        from agent.models_dev import _apply_overrides, _entry_supports_vision
+
+        text_only = {"limit": {"context": 1_000_000, "output": 128_000},
+                     "modalities": {"input": ["text"], "output": ["text"]},
+                     "tool_call": True, "reasoning": True}
+        for provider in ("zai", "zai-coding", "zai-coding-cn"):
+            for slug in ("glm-5.3-flash", "glm-5.3-flash[1m]"):
+                patched = _apply_overrides(provider, slug, dict(text_only), config=None)
+                assert patched is not None
+                assert _entry_supports_vision(patched) is True, (provider, slug)
 
     def test_per_model_max_output(self) -> None:
         from providers import get_provider_profile

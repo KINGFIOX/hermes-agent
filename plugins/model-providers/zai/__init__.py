@@ -51,10 +51,19 @@ def _glm_5_2_reasoning_effort(reasoning_config: dict | None, *, model: str | Non
 # reject them (the provider-aware media fallback, mirroring ZCode's builtin catalog).
 _TEXT_ONLY = {"supports_reasoning": True, "supports_vision": False, "model_family": "glm"}
 _VISION = {"supports_vision": True, "model_family": "glm"}
+# GLM-5.3-Flash is the natively multimodal member of the 5.3 family: ZCode's dedicated
+# ``.*glm-5\.3-flash.*`` rule overrides the text-only family rule with supportsImage (no
+# apiTypeMatch, so every wire incl. anthropic-messages), and docs.z.ai/devpack/latest-model
+# calls it multimodal. Reasoning + 1M window stay as for the family.
+_GLM_53_FLASH = dict(_TEXT_ONLY, supports_vision=True, context_window=1_048_576)
 
 GLM_CAPABILITIES: dict[str, dict[str, Any]] = {
+    # ``[1m]`` slugs are the spellings docs.z.ai recommends for the Coding Plan (Claude Code
+    # defaults); model_capabilities is an exact-key lookup, so they need their own entries.
     "glm-5.3": dict(_TEXT_ONLY, context_window=1_048_576),
-    "glm-5.3-flash": dict(_TEXT_ONLY, context_window=1_048_576),
+    "glm-5.3[1m]": dict(_TEXT_ONLY, context_window=1_048_576),
+    "glm-5.3-flash": dict(_GLM_53_FLASH),
+    "glm-5.3-flash[1m]": dict(_GLM_53_FLASH),
     "glm-5.2": dict(_TEXT_ONLY, context_window=1_048_576),
     "glm-5.2[1m]": dict(_TEXT_ONLY, context_window=1_048_576),
     "glm-5.1": dict(_TEXT_ONLY), "glm-5.1-highspeed": dict(_TEXT_ONLY),
